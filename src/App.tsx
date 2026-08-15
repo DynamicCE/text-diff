@@ -1,9 +1,11 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
 import {
+  buildDiffRows,
   calculateTextDiff,
   formatDiffChangesForClipboard,
   type DiffChange,
   type DiffMode,
+  type DiffRow,
 } from './diff';
 
 function App() {
@@ -14,6 +16,10 @@ function App() {
 
   const diff = useMemo(
     () => calculateTextDiff(oldText, newText, mode),
+    [oldText, newText, mode],
+  );
+  const diffRows = useMemo(
+    () => buildDiffRows(oldText, newText, mode),
     [oldText, newText, mode],
   );
 
@@ -160,13 +166,23 @@ function App() {
           {diff.changes.length === 0 ? (
             <p className="empty-state">Farkı görmek için alanlardan birine yazmaya başlayın.</p>
           ) : (
-            <pre>
-              <code>
-                {diff.changes.map((change, index) => (
-                  <DiffChangeSpan key={`${change.type}-${index}`} change={change} />
-                ))}
-              </code>
-            </pre>
+            <div className="diff-table">
+              <div className="diff-table-header">
+                <div className="diff-table-heading diff-table-heading-old">
+                  <span className="diff-table-heading-icon" aria-hidden="true">−</span>
+                  <span>Eski metin</span>
+                  <span className="diff-table-heading-count">{diff.removedLines} silinen</span>
+                </div>
+                <div className="diff-table-heading diff-table-heading-new">
+                  <span className="diff-table-heading-icon" aria-hidden="true">＋</span>
+                  <span>Yeni metin</span>
+                  <span className="diff-table-heading-count">{diff.addedLines} eklenen</span>
+                </div>
+              </div>
+              {diffRows.map((row, index) => (
+                <DiffRowView key={`diff-row-${index}`} row={row} />
+              ))}
+            </div>
           )}
         </div>
       </section>
@@ -176,6 +192,51 @@ function App() {
 
 function DiffChangeSpan({ change }: { change: DiffChange }) {
   return <span className={`diff-change diff-change-${change.type}`}>{change.value}</span>;
+}
+
+function DiffRowView({ row }: { row: DiffRow }) {
+  return (
+    <div className="diff-table-row">
+      <DiffLine lineNumber={row.oldLineNumber} changes={row.oldChanges} isOldSide />
+      <DiffLine lineNumber={row.newLineNumber} changes={row.newChanges} isOldSide={false} />
+    </div>
+  );
+}
+
+function DiffLine({
+  lineNumber,
+  changes,
+  isOldSide,
+}: {
+  lineNumber: number | null;
+  changes: DiffChange[];
+  isOldSide: boolean;
+}) {
+  const hasRemovedChange = changes.some((change) => change.type === 'removed');
+  const hasAddedChange = changes.some((change) => change.type === 'added');
+  const hasUnchangedChange = changes.some((change) => change.type === 'unchanged');
+  let lineChangeClass = 'diff-line-unchanged';
+
+  if (changes.length === 0) {
+    lineChangeClass = 'diff-line-empty';
+  } else if (hasRemovedChange) {
+    lineChangeClass = hasUnchangedChange ? 'diff-line-inline-removed' : 'diff-line-removed';
+  } else if (hasAddedChange) {
+    lineChangeClass = hasUnchangedChange ? 'diff-line-inline-added' : 'diff-line-added';
+  }
+
+  return (
+    <div className={`diff-line ${isOldSide ? 'diff-line-old' : 'diff-line-new'} ${lineChangeClass}`}>
+      <span className="diff-line-number" aria-hidden="true">{lineNumber ?? ''}</span>
+      <code className="diff-line-content">
+        {changes.length === 0
+          ? '\u00a0'
+          : changes.map((change, index) => (
+              <DiffChangeSpan key={`${change.type}-${index}`} change={change} />
+            ))}
+      </code>
+    </div>
+  );
 }
 
 export default App;

@@ -13,6 +13,13 @@ export interface TextDiffResult {
   removedLines: number;
 }
 
+export interface DiffRow {
+  oldLineNumber: number | null;
+  oldChanges: DiffChange[];
+  newLineNumber: number | null;
+  newChanges: DiffChange[];
+}
+
 /**
  * Compares two text values and returns display changes plus line-level counts.
  * Counts stay line based in word mode so the summary always describes lines.
@@ -33,6 +40,76 @@ export function calculateTextDiff(
     addedLines: countChangedLines(lineChanges, 'added'),
     removedLines: countChangedLines(lineChanges, 'removed'),
   };
+}
+
+export function buildDiffRows(oldText: string, newText: string, mode: DiffMode): DiffRow[] {
+  const lineChanges = buildDiffChanges(splitTextIntoLines(oldText), splitTextIntoLines(newText));
+  const rows: DiffRow[] = [];
+  let oldLineNumber = 1;
+  let newLineNumber = 1;
+  let changeIndex = 0;
+
+  while (changeIndex < lineChanges.length) {
+    const change = lineChanges[changeIndex];
+
+    if (change.type === 'unchanged') {
+      for (const line of splitTextIntoLines(change.value)) {
+        const displayLine = stripLineEnding(line);
+        const unchangedChanges: DiffChange[] = [{ type: 'unchanged', value: displayLine }];
+        rows.push({
+          oldLineNumber,
+          oldChanges: unchangedChanges,
+          newLineNumber,
+          newChanges: unchangedChanges,
+        });
+        oldLineNumber += 1;
+        newLineNumber += 1;
+      }
+      changeIndex += 1;
+      continue;
+    }
+
+    const removedLines: string[] = [];
+    const addedLines: string[] = [];
+
+    while (changeIndex < lineChanges.length && lineChanges[changeIndex].type !== 'unchanged') {
+      const changedLines = splitTextIntoLines(lineChanges[changeIndex].value);
+
+      if (lineChanges[changeIndex].type === 'removed') {
+        removedLines.push(...changedLines);
+      } else {
+        addedLines.push(...changedLines);
+      }
+
+      changeIndex += 1;
+    }
+
+    const changedRowCount = Math.max(removedLines.length, addedLines.length);
+
+    for (let rowIndex = 0; rowIndex < changedRowCount; rowIndex += 1) {
+      const oldLine = removedLines[rowIndex];
+      const newLine = addedLines[rowIndex];
+      const hasOldLine = oldLine !== undefined;
+      const hasNewLine = newLine !== undefined;
+
+      rows.push({
+        oldLineNumber: hasOldLine ? oldLineNumber : null,
+        oldChanges: buildChangesForDiffSide(oldLine, newLine, mode, true),
+        newLineNumber: hasNewLine ? newLineNumber : null,
+        newChanges: buildChangesForDiffSide(oldLine, newLine, mode, false),
+      });
+
+      if (hasOldLine) {
+        oldLineNumber += 1;
+      }
+
+      if (hasNewLine) {
+        newLineNumber += 1;
+      }
+    }
+  }
+
+  return rows;
 }
 
 export function formatDiffChangesForClipboard(changes: DiffChange[]): string {
@@ -78,6 +155,67 @@ function splitTextIntoLines(text: string): string[] {
   }
 
   return lines;
+}
+
+function stripLineEnding(line: string): string {
+  if (!line.endsWith('\n')) {
+    return line;
+  }
+
+  return line.slice(0, -1).replace(/\r$/, '');
+}
+
+function buildChangesForDiffSide(
+  oldLine: string | undefined,
+  newLine: string | undefined,
+  mode: DiffMode,
+  showOldSide: boolean,
+): DiffChange[] {
+  if (oldLine === undefined && newLine === undefined) {
+    return [];
+  }
+
+  if (oldLine === undefined) {
+    if (showOldSide || newLine === undefined) {
+      return [];
+    }
+
+    return [{ type: 'added', value: stripLineEnding(newLine) }];
+  }
+
+  if (newLine === undefined) {
+    return showOldSide
+      ? [{ type: 'removed', value: stripLineEnding(oldLine) }]
+      : [];
+  }
+
+  if (mode === 'word') {
+    const wordChanges = buildDiffChanges(
+      splitTextIntoWords(stripLineEnding(oldLine)),
+      splitTextIntoWords(stripLineEnding(newLine)),
+    );
+
+    const hasWordChange = wordChanges.some((change) => change.type !== 'unchanged');
+
+    if (!hasWordChange && oldLine !== newLine) {
+      return [{
+        type: showOldSide ? 'removed' : 'added',
+        value: stripLineEnding(showOldSide ? oldLine : newLine),
+      }];
+    }
+
+    return wordChanges.filter((change) =>
+      showOldSide ? change.type !== 'added' : change.type !== 'removed',
+    );
+  }
+
+  let lineType: DiffChangeType = 'unchanged';
+
+  if (oldLine !== newLine) {
+    lineType = showOldSide ? 'removed' : 'added';
+  }
+
+  return [{ type: lineType, value: stripLineEnding(showOldSide ? oldLine : newLine) }];
 }
 
 function splitTextIntoWords(text: string): string[] {

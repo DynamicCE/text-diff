@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateTextDiff, formatDiffChangesForClipboard } from './diff';
+import { buildDiffRows, calculateTextDiff, formatDiffChangesForClipboard } from './diff';
 
 describe('calculateTextDiff', () => {
   it('returns no changes for two empty texts', () => {
@@ -101,5 +101,79 @@ describe('calculateTextDiff', () => {
     ]);
 
     expect(clipboardText).toBe('  Merhaba + güzel   dünya');
+  });
+});
+
+describe('buildDiffRows', () => {
+  it('aligns a replaced line in the same old and new row', () => {
+    expect(buildDiffRows('alpha\nold value\nomega', 'alpha\nnew value\nomega', 'line')).toEqual([
+      {
+        oldLineNumber: 1,
+        oldChanges: [{ type: 'unchanged', value: 'alpha' }],
+        newLineNumber: 1,
+        newChanges: [{ type: 'unchanged', value: 'alpha' }],
+      },
+      {
+        oldLineNumber: 2,
+        oldChanges: [{ type: 'removed', value: 'old value' }],
+        newLineNumber: 2,
+        newChanges: [{ type: 'added', value: 'new value' }],
+      },
+      {
+        oldLineNumber: 3,
+        oldChanges: [{ type: 'unchanged', value: 'omega' }],
+        newLineNumber: 3,
+        newChanges: [{ type: 'unchanged', value: 'omega' }],
+      },
+    ]);
+  });
+
+  it('keeps unchanged rows aligned around pure insertions and deletions', () => {
+    expect(buildDiffRows('one\nthree', 'one\ntwo\nthree', 'line')).toEqual([
+      {
+        oldLineNumber: 1,
+        oldChanges: [{ type: 'unchanged', value: 'one' }],
+        newLineNumber: 1,
+        newChanges: [{ type: 'unchanged', value: 'one' }],
+      },
+      {
+        oldLineNumber: null,
+        oldChanges: [],
+        newLineNumber: 2,
+        newChanges: [{ type: 'added', value: 'two' }],
+      },
+      {
+        oldLineNumber: 2,
+        oldChanges: [{ type: 'unchanged', value: 'three' }],
+        newLineNumber: 3,
+        newChanges: [{ type: 'unchanged', value: 'three' }],
+      },
+    ]);
+
+    expect(buildDiffRows('one\ntwo\nthree', 'one\nthree', 'line')[1]).toEqual({
+      oldLineNumber: 2,
+      oldChanges: [{ type: 'removed', value: 'two' }],
+      newLineNumber: null,
+      newChanges: [],
+    });
+  });
+
+  it('keeps word changes on their corresponding old and new sides', () => {
+    const rows = buildDiffRows('hello old world', 'hello new world', 'word');
+
+    expect(rows[0]).toEqual({
+      oldLineNumber: 1,
+      oldChanges: [
+        { type: 'unchanged', value: 'hello ' },
+        { type: 'removed', value: 'old' },
+        { type: 'unchanged', value: ' world' },
+      ],
+      newLineNumber: 1,
+      newChanges: [
+        { type: 'unchanged', value: 'hello ' },
+        { type: 'added', value: 'new' },
+        { type: 'unchanged', value: ' world' },
+      ],
+    });
   });
 });
