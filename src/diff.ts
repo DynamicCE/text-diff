@@ -190,21 +190,21 @@ function buildChangesForDiffSide(
   }
 
   if (mode === 'word') {
-    const wordChanges = buildDiffChanges(
-      splitTextIntoWords(stripLineEnding(oldLine)),
-      splitTextIntoWords(stripLineEnding(newLine)),
+    const characterChanges = buildDiffChanges(
+      Array.from(stripLineEnding(oldLine)),
+      Array.from(stripLineEnding(newLine)),
     );
 
-    const hasWordChange = wordChanges.some((change) => change.type !== 'unchanged');
+    const hasCharacterChange = characterChanges.some((change) => change.type !== 'unchanged');
 
-    if (!hasWordChange && oldLine !== newLine) {
+    if (!hasCharacterChange && oldLine !== newLine) {
       return [{
         type: showOldSide ? 'removed' : 'added',
         value: stripLineEnding(showOldSide ? oldLine : newLine),
       }];
     }
 
-    return wordChanges.filter((change) =>
+    return characterChanges.filter((change) =>
       showOldSide ? change.type !== 'added' : change.type !== 'removed',
     );
   }

@@ -176,4 +176,23 @@ describe('buildDiffRows', () => {
       ],
     });
   });
+
+  it('highlights only the changed character inside a line', () => {
+    const rows = buildDiffRows(
+      'connect = host.docker.internal:4443',
+      'connect = host.docker.internal:4543',
+      'word',
+    );
+
+    expect(rows[0].oldChanges).toEqual([
+      { type: 'unchanged', value: 'connect = host.docker.internal:4' },
+      { type: 'removed', value: '4' },
+      { type: 'unchanged', value: '43' },
+    ]);
+    expect(rows[0].newChanges).toEqual([
+      { type: 'unchanged', value: 'connect = host.docker.internal:4' },
+      { type: 'added', value: '5' },
+      { type: 'unchanged', value: '43' },
+    ]);
+  });
 });
