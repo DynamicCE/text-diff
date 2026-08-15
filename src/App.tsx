@@ -11,16 +11,31 @@ import {
 function App() {
   const [oldText, setOldText] = useState('');
   const [newText, setNewText] = useState('');
+  const [comparedOldText, setComparedOldText] = useState<string | null>(null);
+  const [comparedNewText, setComparedNewText] = useState<string | null>(null);
   const [mode, setMode] = useState<DiffMode>('line');
   const [copyStatus, setCopyStatus] = useState('');
+  const hasComparison = comparedOldText !== null && comparedNewText !== null;
 
   const diff = useMemo(
-    () => calculateTextDiff(oldText, newText, mode),
-    [oldText, newText, mode],
+    () => {
+      if (comparedOldText === null || comparedNewText === null) {
+        return null;
+      }
+
+      return calculateTextDiff(comparedOldText, comparedNewText, mode);
+    },
+    [comparedOldText, comparedNewText, mode],
   );
   const diffRows = useMemo(
-    () => buildDiffRows(oldText, newText, mode),
-    [oldText, newText, mode],
+    () => {
+      if (comparedOldText === null || comparedNewText === null) {
+        return [];
+      }
+
+      return buildDiffRows(comparedOldText, comparedNewText, mode);
+    },
+    [comparedOldText, comparedNewText, mode],
   );
 
   const handleOldTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -33,20 +48,30 @@ function App() {
     setCopyStatus('');
   };
 
+  const handleFindDifference = () => {
+    setComparedOldText(oldText);
+    setComparedNewText(newText);
+    setCopyStatus('');
+  };
+
   const handleSwapTexts = () => {
     setOldText(newText);
     setNewText(oldText);
+    setComparedOldText(null);
+    setComparedNewText(null);
     setCopyStatus('');
   };
 
   const handleClearTexts = () => {
     setOldText('');
     setNewText('');
+    setComparedOldText(null);
+    setComparedNewText(null);
     setCopyStatus('');
   };
 
   const handleCopyResult = () => {
-    if (!navigator.clipboard) {
+    if (!diff || !navigator.clipboard) {
       setCopyStatus('Pano bu tarayıcıda kullanılamıyor.');
       return;
     }
@@ -72,6 +97,76 @@ function App() {
           <span>+</span>
         </div>
       </header>
+
+      {hasComparison && diff && (
+        <section className="result-section result-reveal" aria-labelledby="result-title">
+          <div className="section-heading result-heading">
+            <div>
+              <p className="eyebrow">Çıktı</p>
+              <h2 id="result-title">Karşılaştırma sonucu</h2>
+            </div>
+            <div className="result-actions">
+              <div className="mode-switch" role="group" aria-label="Fark modu">
+                <button
+                  type="button"
+                  className={`mode-button ${mode === 'line' ? 'mode-button-active' : ''}`}
+                  aria-pressed={mode === 'line'}
+                  onClick={() => setMode('line')}
+                >
+                  Satır bazlı
+                </button>
+                <button
+                  type="button"
+                  className={`mode-button ${mode === 'word' ? 'mode-button-active' : ''}`}
+                  aria-pressed={mode === 'word'}
+                  onClick={() => setMode('word')}
+                >
+                  Kelime bazlı
+                </button>
+              </div>
+              <button type="button" className="button button-primary" onClick={handleCopyResult}>
+                Sonucu kopyala
+              </button>
+            </div>
+          </div>
+
+          <div className="summary" aria-live="polite">
+            <span className="summary-item summary-item-added">
+              <span className="summary-dot" aria-hidden="true" />
+              <strong>{diff.addedLines}</strong> eklenen satır
+            </span>
+            <span className="summary-item summary-item-removed">
+              <span className="summary-dot" aria-hidden="true" />
+              <strong>{diff.removedLines}</strong> silinen satır
+            </span>
+            {copyStatus && <span className="copy-status">{copyStatus}</span>}
+          </div>
+
+          <div className="diff-view" aria-live="polite">
+            {diff.changes.length === 0 ? (
+              <p className="empty-state">Metinler arasında fark bulunamadı.</p>
+            ) : (
+              <div className="diff-table">
+                <div className="diff-table-header">
+                  <div className="diff-table-heading diff-table-heading-old">
+                    <span className="diff-table-heading-icon" aria-hidden="true">−</span>
+                    <span>Eski metin</span>
+                    <span className="diff-table-heading-count">{diff.removedLines} silinen</span>
+                  </div>
+                  <div className="diff-table-heading diff-table-heading-new">
+                    <span className="diff-table-heading-icon" aria-hidden="true">＋</span>
+                    <span>Yeni metin</span>
+                    <span className="diff-table-heading-count">{diff.addedLines} eklenen</span>
+                  </div>
+                </div>
+                {diffRows.map((row, index) => (
+                  <DiffRowView key={`diff-row-${index}`} row={row} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="editor-section" aria-labelledby="editor-title">
         <div className="section-heading">
@@ -117,73 +212,10 @@ function App() {
             />
           </label>
         </div>
-      </section>
-
-      <section className="result-section" aria-labelledby="result-title">
-        <div className="section-heading result-heading">
-          <div>
-            <p className="eyebrow">Çıktı</p>
-            <h2 id="result-title">Fark</h2>
-          </div>
-          <div className="result-actions">
-            <div className="mode-switch" role="group" aria-label="Fark modu">
-              <button
-                type="button"
-                className={`mode-button ${mode === 'line' ? 'mode-button-active' : ''}`}
-                aria-pressed={mode === 'line'}
-                onClick={() => setMode('line')}
-              >
-                Satır bazlı
-              </button>
-              <button
-                type="button"
-                className={`mode-button ${mode === 'word' ? 'mode-button-active' : ''}`}
-                aria-pressed={mode === 'word'}
-                onClick={() => setMode('word')}
-              >
-                Kelime bazlı
-              </button>
-            </div>
-            <button type="button" className="button button-primary" onClick={handleCopyResult}>
-              Sonucu kopyala
-            </button>
-          </div>
-        </div>
-
-        <div className="summary" aria-live="polite">
-          <span className="summary-item summary-item-added">
-            <span className="summary-dot" aria-hidden="true" />
-            <strong>{diff.addedLines}</strong> eklenen satır
-          </span>
-          <span className="summary-item summary-item-removed">
-            <span className="summary-dot" aria-hidden="true" />
-            <strong>{diff.removedLines}</strong> silinen satır
-          </span>
-          {copyStatus && <span className="copy-status">{copyStatus}</span>}
-        </div>
-
-        <div className="diff-view" aria-live="polite">
-          {diff.changes.length === 0 ? (
-            <p className="empty-state">Farkı görmek için alanlardan birine yazmaya başlayın.</p>
-          ) : (
-            <div className="diff-table">
-              <div className="diff-table-header">
-                <div className="diff-table-heading diff-table-heading-old">
-                  <span className="diff-table-heading-icon" aria-hidden="true">−</span>
-                  <span>Eski metin</span>
-                  <span className="diff-table-heading-count">{diff.removedLines} silinen</span>
-                </div>
-                <div className="diff-table-heading diff-table-heading-new">
-                  <span className="diff-table-heading-icon" aria-hidden="true">＋</span>
-                  <span>Yeni metin</span>
-                  <span className="diff-table-heading-count">{diff.addedLines} eklenen</span>
-                </div>
-              </div>
-              {diffRows.map((row, index) => (
-                <DiffRowView key={`diff-row-${index}`} row={row} />
-              ))}
-            </div>
-          )}
+        <div className="find-difference-action">
+          <button type="button" className="button button-primary find-button" onClick={handleFindDifference}>
+            Farkı Bul
+          </button>
         </div>
       </section>
     </main>
