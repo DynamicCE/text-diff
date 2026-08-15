@@ -70,24 +70,24 @@ function App() {
 
   const handleCopyResult = () => {
     if (!diff || !navigator.clipboard) {
-      setCopyStatus('Pano bu tarayıcıda kullanılamıyor.');
+      setCopyStatus('Clipboard access is unavailable in this browser.');
       return;
     }
 
     void navigator.clipboard
       .writeText(formatDiffChangesForClipboard(diff.changes))
-      .then(() => setCopyStatus('Sonuç kopyalandı.'))
-      .catch(() => setCopyStatus('Kopyalama başarısız. Tekrar deneyin.'));
+      .then(() => setCopyStatus('Result copied.'))
+      .catch(() => setCopyStatus('Copy failed. Please try again.'));
   };
 
   return (
     <main className="app-shell">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Tarayıcı aracı</p>
-          <h1>Metin farkı</h1>
+          <p className="eyebrow">Browser tool</p>
+          <h1>Text diff</h1>
           <p className="page-description">
-            İki metni anında karşılaştırın. Hiçbir veri tarayıcıdan çıkmaz.
+            Compare two texts instantly. Your text never leaves your browser.
           </p>
         </div>
       </header>
@@ -96,12 +96,12 @@ function App() {
         <section className="result-section result-reveal" aria-labelledby="result-title">
           <div className="section-heading result-heading">
             <div>
-              <p className="eyebrow">Çıktı</p>
-              <h2 id="result-title">Karşılaştırma sonucu</h2>
+              <p className="eyebrow">Output</p>
+              <h2 id="result-title">Comparison result</h2>
             </div>
             <div className="result-actions">
               <button type="button" className="button button-primary" onClick={handleCopyResult}>
-                Sonucu kopyala
+                Copy result
               </button>
             </div>
           </div>
@@ -109,30 +109,30 @@ function App() {
           <div className="summary" aria-live="polite">
             <span className="summary-item summary-item-added">
               <span className="summary-dot" aria-hidden="true" />
-              <strong>{diff.addedLines}</strong> eklenen satır
+              Lines added: <strong>{diff.addedLines}</strong>
             </span>
             <span className="summary-item summary-item-removed">
               <span className="summary-dot" aria-hidden="true" />
-              <strong>{diff.removedLines}</strong> silinen satır
+              Lines removed: <strong>{diff.removedLines}</strong>
             </span>
             {copyStatus && <span className="copy-status">{copyStatus}</span>}
           </div>
 
           <div className="diff-view" aria-live="polite">
             {diff.changes.length === 0 ? (
-              <p className="empty-state">Metinler arasında fark bulunamadı.</p>
+              <p className="empty-state">No differences found.</p>
             ) : (
               <div className="diff-table">
                 <div className="diff-table-header">
                   <div className="diff-table-heading diff-table-heading-old">
                     <span className="diff-table-heading-icon" aria-hidden="true">−</span>
-                    <span>Eski metin</span>
-                    <span className="diff-table-heading-count">{diff.removedLines} silinen</span>
+                    <span>Old text</span>
+                    <span className="diff-table-heading-count">{diff.removedLines} removed</span>
                   </div>
                   <div className="diff-table-heading diff-table-heading-new">
                     <span className="diff-table-heading-icon" aria-hidden="true">＋</span>
-                    <span>Yeni metin</span>
-                    <span className="diff-table-heading-count">{diff.addedLines} eklenen</span>
+                    <span>New text</span>
+                    <span className="diff-table-heading-count">{diff.addedLines} added</span>
                   </div>
                 </div>
                 {diffRows.map((row, index) => (
@@ -147,15 +147,15 @@ function App() {
       <section className="editor-section" aria-labelledby="editor-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Girdi</p>
-            <h2 id="editor-title">Metinlerinizi karşılaştırın</h2>
+            <p className="eyebrow">Input</p>
+            <h2 id="editor-title">Compare your texts</h2>
           </div>
           <div className="editor-actions">
             <button type="button" className="button button-secondary" onClick={handleSwapTexts}>
-              Alanları değiştir
+              Swap fields
             </button>
             <button type="button" className="button button-secondary" onClick={handleClearTexts}>
-              Temizle
+              Clear
             </button>
           </div>
         </div>
@@ -163,34 +163,34 @@ function App() {
         <div className="editor-grid">
           <label className="editor-card" htmlFor="old-text">
             <span className="editor-label">
-              <span>Eski metin</span>
-              <span className="editor-label-hint">Orijinal</span>
+              <span>Old text</span>
+              <span className="editor-label-hint">Original</span>
             </span>
             <textarea
               id="old-text"
               value={oldText}
               onChange={handleOldTextChange}
-              placeholder="Orijinal metni buraya yapıştırın..."
+              placeholder="Paste the original text here..."
               spellCheck="false"
             />
           </label>
           <label className="editor-card" htmlFor="new-text">
             <span className="editor-label">
-              <span>Yeni metin</span>
-              <span className="editor-label-hint">Güncel</span>
+              <span>New text</span>
+              <span className="editor-label-hint">Updated</span>
             </span>
             <textarea
               id="new-text"
               value={newText}
               onChange={handleNewTextChange}
-              placeholder="Güncel metni buraya yapıştırın..."
+              placeholder="Paste the updated text here..."
               spellCheck="false"
             />
           </label>
         </div>
         <div className="find-difference-action">
           <button type="button" className="button button-primary find-button" onClick={handleFindDifference}>
-            Farkı Bul
+            Find Difference
           </button>
         </div>
       </section>
