@@ -4,7 +4,6 @@ import {
   calculateTextDiff,
   formatDiffChangesForClipboard,
   type DiffChange,
-  type DiffMode,
   type DiffRow,
 } from './diff';
 
@@ -13,7 +12,6 @@ function App() {
   const [newText, setNewText] = useState('');
   const [comparedOldText, setComparedOldText] = useState<string | null>(null);
   const [comparedNewText, setComparedNewText] = useState<string | null>(null);
-  const [mode, setMode] = useState<DiffMode>('line');
   const [copyStatus, setCopyStatus] = useState('');
   const hasComparison = comparedOldText !== null && comparedNewText !== null;
 
@@ -23,9 +21,9 @@ function App() {
         return null;
       }
 
-      return calculateTextDiff(comparedOldText, comparedNewText, mode);
+      return calculateTextDiff(comparedOldText, comparedNewText, 'line');
     },
-    [comparedOldText, comparedNewText, mode],
+    [comparedOldText, comparedNewText],
   );
   const diffRows = useMemo(
     () => {
@@ -33,9 +31,9 @@ function App() {
         return [];
       }
 
-      return buildDiffRows(comparedOldText, comparedNewText, mode);
+      return buildDiffRows(comparedOldText, comparedNewText, 'word');
     },
-    [comparedOldText, comparedNewText, mode],
+    [comparedOldText, comparedNewText],
   );
 
   const handleOldTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -92,10 +90,6 @@ function App() {
             İki metni anında karşılaştırın. Hiçbir veri tarayıcıdan çıkmaz.
           </p>
         </div>
-        <div className="header-mark" aria-hidden="true">
-          <span>−</span>
-          <span>+</span>
-        </div>
       </header>
 
       {hasComparison && diff && (
@@ -106,24 +100,6 @@ function App() {
               <h2 id="result-title">Karşılaştırma sonucu</h2>
             </div>
             <div className="result-actions">
-              <div className="mode-switch" role="group" aria-label="Fark modu">
-                <button
-                  type="button"
-                  className={`mode-button ${mode === 'line' ? 'mode-button-active' : ''}`}
-                  aria-pressed={mode === 'line'}
-                  onClick={() => setMode('line')}
-                >
-                  Satır bazlı
-                </button>
-                <button
-                  type="button"
-                  className={`mode-button ${mode === 'word' ? 'mode-button-active' : ''}`}
-                  aria-pressed={mode === 'word'}
-                  onClick={() => setMode('word')}
-                >
-                  Kelime bazlı
-                </button>
-              </div>
               <button type="button" className="button button-primary" onClick={handleCopyResult}>
                 Sonucu kopyala
               </button>
